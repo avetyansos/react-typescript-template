@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, MotionProps } from "framer-motion";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import {
@@ -23,7 +23,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Create custom motion components with proper HTML props
+const MotionForm = motion("form") as React.ComponentType<
+    React.FormHTMLAttributes<HTMLFormElement> & MotionProps
+>;
+const MotionDiv = motion("div") as React.ComponentType<
+    React.HTMLAttributes<HTMLDivElement> & MotionProps
+>;
+
+// -----------------------------------------------------------------------------
 // Types & Interfaces
+// -----------------------------------------------------------------------------
 interface JournalEntry {
   id: string;
   timestamp: number;
@@ -31,7 +41,9 @@ interface JournalEntry {
   content: string;
 }
 
+// -----------------------------------------------------------------------------
 // Header Component
+// -----------------------------------------------------------------------------
 const Header = () => (
     <header className="text-center mb-12">
       <h1 className="text-5xl sm:text-6xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-indigo-600 mb-3">
@@ -43,15 +55,17 @@ const Header = () => (
     </header>
 );
 
+// -----------------------------------------------------------------------------
 // EntryForm Component (Static New Entry Form)
+// -----------------------------------------------------------------------------
 interface EntryFormProps {
   title: string;
   content: string;
-  onChange: (field: 'title' | 'content', value: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onChange: (field: "title" | "content", value: string) => void;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
 }
 const EntryForm: React.FC<EntryFormProps> = ({ title, content, onChange, onSubmit }) => (
-    <motion.form
+    <MotionForm
         onSubmit={onSubmit}
         className="bg-white dark:bg-zinc-800 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-700 overflow-hidden p-6"
         initial={{ x: -20 }}
@@ -62,13 +76,13 @@ const EntryForm: React.FC<EntryFormProps> = ({ title, content, onChange, onSubmi
           placeholder="Entry title"
           className="w-full px-4 py-3 text-lg font-medium bg-transparent border-b border-transparent focus:border-b-2 focus:border-violet-500 dark:focus:border-violet-400 focus:ring-0 mb-6 placeholder:text-zinc-400"
           value={title}
-          onChange={(e) => onChange('title', e.target.value)}
+          onChange={(e) => onChange("title", e.target.value)}
       />
       <Textarea
           placeholder="Write your thoughts..."
           className="w-full h-64 px-4 py-3 text-base bg-transparent border border-transparent focus:border focus:border-violet-500 dark:focus:border-violet-400 focus:ring-0 resize-none placeholder:text-zinc-400"
           value={content}
-          onChange={(e) => onChange('content', e.target.value)}
+          onChange={(e) => onChange("content", e.target.value)}
       />
       <div className="border-t border-zinc-100 dark:border-zinc-700 pt-4 bg-zinc-50 dark:bg-zinc-800/50">
         <Button
@@ -78,17 +92,19 @@ const EntryForm: React.FC<EntryFormProps> = ({ title, content, onChange, onSubmi
           Save Entry
         </Button>
       </div>
-    </motion.form>
+    </MotionForm>
 );
 
+// -----------------------------------------------------------------------------
 // EntryCard Component
+// -----------------------------------------------------------------------------
 interface EntryCardProps {
   entry: JournalEntry;
   onEdit: () => void;
   onDelete: () => void;
 }
 const EntryCard: React.FC<EntryCardProps> = ({ entry, onEdit, onDelete }) => (
-    <motion.div
+    <MotionDiv
         className="group bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 overflow-hidden cursor-pointer"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -100,9 +116,9 @@ const EntryCard: React.FC<EntryCardProps> = ({ entry, onEdit, onDelete }) => (
           </h3>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             {new Date(entry.timestamp).toLocaleDateString(undefined, {
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric'
+              month: "long",
+              day: "numeric",
+              year: "numeric",
             })}
           </p>
         </div>
@@ -132,10 +148,12 @@ const EntryCard: React.FC<EntryCardProps> = ({ entry, onEdit, onDelete }) => (
           Delete
         </Button>
       </div>
-    </motion.div>
+    </MotionDiv>
 );
 
+// -----------------------------------------------------------------------------
 // DeleteEntryDialog Component
+// -----------------------------------------------------------------------------
 interface DeleteEntryDialogProps {
   entry: JournalEntry;
   isOpen: boolean;
@@ -166,10 +184,18 @@ const DeleteEntryDialog: React.FC<DeleteEntryDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2 mt-4">
-          <Button variant="outline" onClick={onCancelDelete} className="border-zinc-200 dark:border-zinc-700">
+          <Button
+              variant="outline"
+              onClick={onCancelDelete}
+              className="border-zinc-200 dark:border-zinc-700"
+          >
             Cancel
           </Button>
-          <Button variant="destructive" onClick={onConfirmDelete} className="bg-red-500 hover:bg-red-600">
+          <Button
+              variant="destructive"
+              onClick={onConfirmDelete}
+              className="bg-red-500 hover:bg-red-600"
+          >
             Delete
           </Button>
         </DialogFooter>
@@ -177,7 +203,9 @@ const DeleteEntryDialog: React.FC<DeleteEntryDialogProps> = ({
     </Dialog>
 );
 
+// -----------------------------------------------------------------------------
 // EditEntryDialog Component
+// -----------------------------------------------------------------------------
 interface EditEntryDialogProps {
   entry: JournalEntry;
   isOpen: boolean;
@@ -202,7 +230,7 @@ const EditEntryDialog: React.FC<EditEntryDialogProps> = ({
     }
   }, [isOpen, entry.title, entry.content]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editTitle.trim() || !editContent.trim()) {
       toast.error("Please fill in all fields");
@@ -220,7 +248,7 @@ const EditEntryDialog: React.FC<EditEntryDialogProps> = ({
           <DialogHeader>
             <DialogTitle className="text-xl">Edit Entry</DialogTitle>
           </DialogHeader>
-          <motion.form onSubmit={handleSubmit} className="p-6">
+          <MotionForm onSubmit={handleSubmit} className="p-6">
             <Input
                 type="text"
                 placeholder="Entry title"
@@ -235,7 +263,10 @@ const EditEntryDialog: React.FC<EditEntryDialogProps> = ({
                 onChange={(e) => setEditContent(e.target.value)}
             />
             <div className="border-t border-zinc-100 dark:border-zinc-700 pt-4 bg-zinc-50 dark:bg-zinc-800/50 flex gap-3">
-              <Button type="submit" className="flex-1 bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600 text-white font-medium py-2.5 transition-all duration-150 border-0 focus:ring-0">
+              <Button
+                  type="submit"
+                  className="flex-1 bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600 text-white font-medium py-2.5 transition-all duration-150 border-0 focus:ring-0"
+              >
                 Update Entry
               </Button>
               <Button
@@ -247,22 +278,20 @@ const EditEntryDialog: React.FC<EditEntryDialogProps> = ({
                 Cancel
               </Button>
             </div>
-          </motion.form>
+          </MotionForm>
         </DialogContent>
       </Dialog>
   );
 };
 
+// -----------------------------------------------------------------------------
 // Main JournalApp Component
+// -----------------------------------------------------------------------------
 const JournalApp = () => {
-  // New entry form state (left card)
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  // Journal entries array
   const [entries, setEntries] = useState<JournalEntry[]>([]);
-  // Sorting state ("newest" or "oldest")
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
-  // Dialog states for editing and deletion
   const [editDialogEntry, setEditDialogEntry] = useState<JournalEntry | null>(null);
   const [deleteDialogEntry, setDeleteDialogEntry] = useState<JournalEntry | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -281,8 +310,7 @@ const JournalApp = () => {
     localStorage.setItem("journalEntries", JSON.stringify(entries));
   }, [entries]);
 
-  // Handle new entry submission from the static form
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) {
       toast.error("Fields are empty");
@@ -294,18 +322,16 @@ const JournalApp = () => {
       title,
       content,
     };
-    setEntries(prev => [newEntry, ...prev]);
+    setEntries((prev) => [newEntry, ...prev]);
     toast.success("Entry created");
     setTitle("");
     setContent("");
   };
 
-  // Sorted entries based on sortOrder
   const sortedEntries = [...entries].sort((a, b) =>
       sortOrder === "newest" ? b.timestamp - a.timestamp : a.timestamp - b.timestamp
   );
 
-  // Open dialogs for editing or deletion
   const openEditDialog = (entry: JournalEntry) => {
     setEditDialogEntry(entry);
     setEditDialogOpen(true);
@@ -317,7 +343,7 @@ const JournalApp = () => {
   };
 
   const handleConfirmEdit = (updatedEntry: JournalEntry) => {
-    setEntries(prev => prev.map(e => e.id === updatedEntry.id ? updatedEntry : e));
+    setEntries((prev) => prev.map((e) => (e.id === updatedEntry.id ? updatedEntry : e)));
     toast.success("Entry updated");
     setEditDialogEntry(null);
     setEditDialogOpen(false);
@@ -325,7 +351,7 @@ const JournalApp = () => {
 
   const handleConfirmDelete = () => {
     if (deleteDialogEntry) {
-      setEntries(prev => prev.filter(e => e.id !== deleteDialogEntry.id));
+      setEntries((prev) => prev.filter((e) => e.id !== deleteDialogEntry.id));
       toast.success("Entry deleted");
       setDeleteDialogEntry(null);
       setDeleteDialogOpen(false);
@@ -338,24 +364,22 @@ const JournalApp = () => {
   };
 
   return (
-      <motion.div
+      <MotionDiv
           className="min-h-screen bg-[#fafafa] dark:bg-zinc-900 p-4 sm:p-8"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
       >
-        <motion.div className="max-w-7xl mx-auto" initial={{ y: 20 }} animate={{ y: 0 }}>
+        <MotionDiv className="max-w-7xl mx-auto" initial={{ y: 20 }} animate={{ y: 0 }}>
           <Header />
           <div className="grid lg:grid-cols-5 gap-8">
-            {/* Left Card: New Entry Form (matching PersonalJournalApp style) */}
             <div className="lg:col-span-2">
               <EntryForm
                   title={title}
                   content={content}
-                  onChange={(field, value) => field === "title" ? setTitle(value) : setContent(value)}
+                  onChange={(field, value) => (field === "title" ? setTitle(value) : setContent(value))}
                   onSubmit={handleSubmit}
               />
             </div>
-            {/* Right Card: Entries List */}
             <div className="lg:col-span-3 space-y-6">
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-100">
@@ -387,7 +411,6 @@ const JournalApp = () => {
               </div>
             </div>
           </div>
-          {/* Delete Entry Dialog */}
           {deleteDialogEntry && (
               <DeleteEntryDialog
                   entry={deleteDialogEntry}
@@ -398,7 +421,6 @@ const JournalApp = () => {
                   onEdit={() => openEditDialog(deleteDialogEntry)}
               />
           )}
-          {/* Edit Entry Dialog */}
           {editDialogEntry && (
               <EditEntryDialog
                   entry={editDialogEntry}
@@ -411,9 +433,9 @@ const JournalApp = () => {
                   }}
               />
           )}
-        </motion.div>
+        </MotionDiv>
         <Toaster />
-      </motion.div>
+      </MotionDiv>
   );
 };
 

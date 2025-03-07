@@ -1,221 +1,420 @@
-import { useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+'use client'
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
-import { Toaster } from "@/components/ui/toaster";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-interface Sauce {
-  id: number;
-  name: string;
-  tags: string[];
-  ratings: number[];
-  newTag: string;
-  newRating: string;
-  error: string;
+// Types & Interfaces
+interface JournalEntry {
+  id: string;
+  timestamp: number;
+  title: string;
+  content: string;
 }
 
-const initialSauces: Sauce[] = [
-  {
-    id: 1,
-    name: "Sriracha",
-    tags: ["Spicy", "Asian"],
-    ratings: [] as number[],
-    newTag: "",
-    newRating: "",
-    error: "",
-  },
-  {
-    id: 2,
-    name: "Tabasco",
-    tags: ["Vinegary", "Classic"],
-    ratings: [] as number[],
-    newTag: "",
-    newRating: "",
-    error: "",
-  },
-  {
-    id: 3,
-    name: "Frank's RedHot",
-    tags: ["Mild", "Buffalo"],
-    ratings: [] as number[],
-    newTag: "",
-    newRating: "",
-    error: "",
-  },
-];
+// Header Component
+const Header = () => (
+    <header className="text-center mb-12">
+      <h1 className="text-5xl sm:text-6xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-indigo-600 mb-3">
+        Journal
+      </h1>
+      <p className="text-zinc-500 dark:text-zinc-400 text-lg">
+        Capture your thoughts and reflections
+      </p>
+    </header>
+);
 
-const App = () => {
-  const [sauces, setSauces] = useState<Sauce[]>(initialSauces);
-  const { toast } = useToast();
+// EntryForm Component (Static New Entry Form)
+interface EntryFormProps {
+  title: string;
+  content: string;
+  onChange: (field: 'title' | 'content', value: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+}
+const EntryForm: React.FC<EntryFormProps> = ({ title, content, onChange, onSubmit }) => (
+    <motion.form
+        onSubmit={onSubmit}
+        className="bg-white dark:bg-zinc-800 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-700 overflow-hidden p-6"
+        initial={{ x: -20 }}
+        animate={{ x: 0 }}
+    >
+      <Input
+          type="text"
+          placeholder="Entry title"
+          className="w-full px-4 py-3 text-lg font-medium bg-transparent border-b border-transparent focus:border-b-2 focus:border-violet-500 dark:focus:border-violet-400 focus:ring-0 mb-6 placeholder:text-zinc-400"
+          value={title}
+          onChange={(e) => onChange('title', e.target.value)}
+      />
+      <Textarea
+          placeholder="Write your thoughts..."
+          className="w-full h-64 px-4 py-3 text-base bg-transparent border border-transparent focus:border focus:border-violet-500 dark:focus:border-violet-400 focus:ring-0 resize-none placeholder:text-zinc-400"
+          value={content}
+          onChange={(e) => onChange('content', e.target.value)}
+      />
+      <div className="border-t border-zinc-100 dark:border-zinc-700 pt-4 bg-zinc-50 dark:bg-zinc-800/50">
+        <Button
+            type="submit"
+            className="w-full bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600 text-white font-medium py-2.5 transition-all duration-150 border-0 focus:ring-0"
+        >
+          Save Entry
+        </Button>
+      </div>
+    </motion.form>
+);
 
-  const showNotification = (message: string, type: 'success' | 'error') => {
-    toast({
-      description: message,
-      variant: type === 'success' ? 'default' : 'destructive',
-    });
-  };
+// EntryCard Component
+interface EntryCardProps {
+  entry: JournalEntry;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+const EntryCard: React.FC<EntryCardProps> = ({ entry, onEdit, onDelete }) => (
+    <motion.div
+        className="group bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 overflow-hidden cursor-pointer"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+    >
+      <div className="p-6">
+        <div className="flex justify-between items-start gap-4 mb-4">
+          <h3 className="font-semibold text-xl text-zinc-800 dark:text-zinc-100">
+            {entry.title || "Untitled"}
+          </h3>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            {new Date(entry.timestamp).toLocaleDateString(undefined, {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric'
+            })}
+          </p>
+        </div>
+        <p className="text-zinc-600 dark:text-zinc-300 whitespace-pre-wrap">
+          {entry.content}
+        </p>
+      </div>
+      <div className="border-t border-zinc-100 dark:border-zinc-700 p-4 bg-zinc-50 dark:bg-zinc-800/50 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+            className="text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+        >
+          Edit
+        </Button>
+        <Button
+            variant="destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="bg-red-500 hover:bg-red-600"
+        >
+          Delete
+        </Button>
+      </div>
+    </motion.div>
+);
 
-  const handleRateSauce = (id: number) => {
-    setSauces((prevSauces) =>
-      prevSauces.map((sauce) => {
-        if (sauce.id === id) {
-          if (!sauce.newRating) {
-            return {
-              ...sauce,
-              error: "Please select a rating before submitting!",
-            };
-          }
-          showNotification("Rating submitted successfully!", "success");
-          return {
-            ...sauce,
-            ratings: [...sauce.ratings, parseInt(sauce.newRating)],
-            newRating: "",
-            error: "",
-          };
-        }
-        return sauce;
-      })
-    );
-  };
+// DeleteEntryDialog Component
+interface DeleteEntryDialogProps {
+  entry: JournalEntry;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirmDelete: () => void;
+  onCancelDelete: () => void;
+  onEdit: () => void;
+}
+const DeleteEntryDialog: React.FC<DeleteEntryDialogProps> = ({
+                                                               entry,
+                                                               isOpen,
+                                                               onOpenChange,
+                                                               onConfirmDelete,
+                                                               onCancelDelete,
+                                                               onEdit,
+                                                             }) => (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogTrigger asChild>
+        <div>
+          <EntryCard entry={entry} onEdit={onEdit} onDelete={() => {}} />
+        </div>
+      </DialogTrigger>
+      <DialogContent className="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700">
+        <DialogHeader>
+          <DialogTitle className="text-xl">Delete Entry</DialogTitle>
+          <DialogDescription className="text-zinc-500 dark:text-zinc-400">
+            Are you sure you want to delete this entry? This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 mt-4">
+          <Button variant="outline" onClick={onCancelDelete} className="border-zinc-200 dark:border-zinc-700">
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={onConfirmDelete} className="bg-red-500 hover:bg-red-600">
+            Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+);
 
-  const handleAddTag = (id: number) => {
-    setSauces((prevSauces) =>
-      prevSauces.map((sauce) => {
-        if (sauce.id === id) {
-          if (!sauce.newTag.trim()) {
-            return { ...sauce, error: "Please enter a tag before adding!" };
-          }
-          showNotification("Tag added successfully!", "success");
-          return {
-            ...sauce,
-            tags: [...sauce.tags, sauce.newTag.trim()],
-            newTag: "",
-            error: "",
-          };
-        }
-        return sauce;
-      })
-    );
+// EditEntryDialog Component
+interface EditEntryDialogProps {
+  entry: JournalEntry;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirmEdit: (updatedEntry: JournalEntry) => void;
+  onCancelEdit: () => void;
+}
+const EditEntryDialog: React.FC<EditEntryDialogProps> = ({
+                                                           entry,
+                                                           isOpen,
+                                                           onOpenChange,
+                                                           onConfirmEdit,
+                                                           onCancelEdit,
+                                                         }) => {
+  const [editTitle, setEditTitle] = useState(entry.title);
+  const [editContent, setEditContent] = useState(entry.content);
+
+  useEffect(() => {
+    if (isOpen) {
+      setEditTitle(entry.title);
+      setEditContent(entry.content);
+    }
+  }, [isOpen, entry.title, entry.content]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTitle.trim() || !editContent.trim()) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    onConfirmEdit({ ...entry, title: editTitle, content: editContent });
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-8">
-      <Toaster />
-      
-      <header className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-          Sauce Rating Platform
-        </h1>
-        <p className="text-gray-600 text-lg mt-2">
-          Rate and tag your favorite sauces!
-        </p>
-      </header>
-
-      <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 relative">
-        {sauces.map((sauce) => {
-          const avgRating = sauce.ratings.length > 0
-            ? (sauce.ratings.reduce((a, b) => a + b, 0) / sauce.ratings.length).toFixed(1)
-            : "Not rated yet";
-
-          return (
-            <Card key={sauce.id} className="border-none shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-2xl font-bold">{sauce.name}</CardTitle>
-                <div className="space-y-1">
-                  <p className="text-gray-600">
-                    Tags: {sauce.tags.map((tag, i) => (
-                      <span key={i} className="inline-block bg-blue-100 text-blue-700 rounded-full px-2 py-0.5 text-sm mr-1">
-                        {tag}
-                      </span>
-                    ))}
-                  </p>
-                  <p className="text-gray-700 font-medium">
-                    Average Rating: {" "}
-                    <span className="text-lg font-bold text-blue-600">
-                      {avgRating}
-                    </span>
-                  </p>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="space-y-6">
-                <div className="space-y-3">
-                  <label htmlFor={`rating-${sauce.id}`} className="block font-medium">
-                    Rate this sauce:
-                  </label>
-                  <Select
-                    value={sauce.newRating}
-                    onValueChange={(value) =>
-                      setSauces((prevSauces) =>
-                        prevSauces.map((s) =>
-                          s.id === sauce.id
-                            ? { ...s, newRating: value, error: "" }
-                            : s
-                        )
-                      )
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select Rating" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[...Array(10)].map((_, i) => (
-                        <SelectItem key={i + 1} value={(i + 1).toString()}>
-                          {i + 1} {i + 1 === 10 ? "🔥" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button 
-                    onClick={() => handleRateSauce(sauce.id)}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
-                  >
-                    Submit Rating
-                  </Button>
-                </div>
-
-                <div className="space-y-3">
-                  <label htmlFor={`tag-${sauce.id}`} className="block font-medium">
-                    Add a new tag:
-                  </label>
-                  <Input
-                    id={`tag-${sauce.id}`}
-                    placeholder="e.g., Sweet, Tangy, Hot..."
-                    value={sauce.newTag}
-                    onChange={(e) =>
-                      setSauces((prevSauces) =>
-                        prevSauces.map((s) =>
-                          s.id === sauce.id
-                            ? { ...s, newTag: e.target.value, error: "" }
-                            : s
-                        )
-                      )
-                    }
-                    className="w-full"
-                  />
-                  <Button 
-                    onClick={() => handleAddTag(sauce.id)}
-                    variant="secondary"
-                    className="w-full"
-                  >
-                    Add Tag
-                  </Button>
-                </div>
-
-                {sauce.error && (
-                  <p className="text-red-500 text-sm mt-2 bg-red-50 p-2 rounded">
-                    {sauce.error}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-    </div>
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogTrigger asChild>
+          <div />
+        </DialogTrigger>
+        <DialogContent className="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Edit Entry</DialogTitle>
+          </DialogHeader>
+          <motion.form onSubmit={handleSubmit} className="p-6">
+            <Input
+                type="text"
+                placeholder="Entry title"
+                className="w-full px-4 py-3 text-lg font-medium bg-transparent border-b border-transparent focus:border-b-2 focus:border-violet-500 dark:focus:border-violet-400 focus:ring-0 mb-6 placeholder:text-zinc-400"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+            />
+            <Textarea
+                placeholder="Write your thoughts..."
+                className="w-full h-64 px-4 py-3 text-base bg-transparent border border-transparent focus:border focus:border-violet-500 dark:focus:border-violet-400 focus:ring-0 resize-none placeholder:text-zinc-400"
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+            />
+            <div className="border-t border-zinc-100 dark:border-zinc-700 pt-4 bg-zinc-50 dark:bg-zinc-800/50 flex gap-3">
+              <Button type="submit" className="flex-1 bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600 text-white font-medium py-2.5 transition-all duration-150 border-0 focus:ring-0">
+                Update Entry
+              </Button>
+              <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onCancelEdit}
+                  className="px-6 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              >
+                Cancel
+              </Button>
+            </div>
+          </motion.form>
+        </DialogContent>
+      </Dialog>
   );
 };
 
-export default App;
+// Main JournalApp Component
+const JournalApp = () => {
+  // New entry form state (left card)
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  // Journal entries array
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  // Sorting state ("newest" or "oldest")
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  // Dialog states for editing and deletion
+  const [editDialogEntry, setEditDialogEntry] = useState<JournalEntry | null>(null);
+  const [deleteDialogEntry, setDeleteDialogEntry] = useState<JournalEntry | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Load entries from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem("journalEntries");
+    if (stored) {
+      setEntries(JSON.parse(stored));
+    }
+  }, []);
+
+  // Save entries to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("journalEntries", JSON.stringify(entries));
+  }, [entries]);
+
+  // Handle new entry submission from the static form
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !content.trim()) {
+      toast.error("Fields are empty");
+      return;
+    }
+    const newEntry: JournalEntry = {
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      title,
+      content,
+    };
+    setEntries(prev => [newEntry, ...prev]);
+    toast.success("Entry created");
+    setTitle("");
+    setContent("");
+  };
+
+  // Sorted entries based on sortOrder
+  const sortedEntries = [...entries].sort((a, b) =>
+      sortOrder === "newest" ? b.timestamp - a.timestamp : a.timestamp - b.timestamp
+  );
+
+  // Open dialogs for editing or deletion
+  const openEditDialog = (entry: JournalEntry) => {
+    setEditDialogEntry(entry);
+    setEditDialogOpen(true);
+  };
+
+  const openDeleteDialog = (entry: JournalEntry) => {
+    setDeleteDialogEntry(entry);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmEdit = (updatedEntry: JournalEntry) => {
+    setEntries(prev => prev.map(e => e.id === updatedEntry.id ? updatedEntry : e));
+    toast.success("Entry updated");
+    setEditDialogEntry(null);
+    setEditDialogOpen(false);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteDialogEntry) {
+      setEntries(prev => prev.filter(e => e.id !== deleteDialogEntry.id));
+      toast.success("Entry deleted");
+      setDeleteDialogEntry(null);
+      setDeleteDialogOpen(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteDialogEntry(null);
+    setDeleteDialogOpen(false);
+  };
+
+  return (
+      <motion.div
+          className="min-h-screen bg-[#fafafa] dark:bg-zinc-900 p-4 sm:p-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+      >
+        <motion.div className="max-w-7xl mx-auto" initial={{ y: 20 }} animate={{ y: 0 }}>
+          <Header />
+          <div className="grid lg:grid-cols-5 gap-8">
+            {/* Left Card: New Entry Form (matching PersonalJournalApp style) */}
+            <div className="lg:col-span-2">
+              <EntryForm
+                  title={title}
+                  content={content}
+                  onChange={(field, value) => field === "title" ? setTitle(value) : setContent(value)}
+                  onSubmit={handleSubmit}
+              />
+            </div>
+            {/* Right Card: Entries List */}
+            <div className="lg:col-span-3 space-y-6">
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-2xl font-semibold text-zinc-800 dark:text-zinc-100">
+                  Entries
+                </h2>
+                <Select
+                    value={sortOrder}
+                    onValueChange={(value: "newest" | "oldest") => setSortOrder(value)}
+                >
+                  <SelectTrigger className="w-[180px] border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700">
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-700">
+                {sortedEntries.map((entry) => (
+                    <div key={entry.id} onClick={() => openEditDialog(entry)}>
+                      <EntryCard
+                          entry={entry}
+                          onEdit={() => openEditDialog(entry)}
+                          onDelete={() => openDeleteDialog(entry)}
+                      />
+                    </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          {/* Delete Entry Dialog */}
+          {deleteDialogEntry && (
+              <DeleteEntryDialog
+                  entry={deleteDialogEntry}
+                  isOpen={deleteDialogOpen}
+                  onOpenChange={setDeleteDialogOpen}
+                  onConfirmDelete={handleConfirmDelete}
+                  onCancelDelete={handleCancelDelete}
+                  onEdit={() => openEditDialog(deleteDialogEntry)}
+              />
+          )}
+          {/* Edit Entry Dialog */}
+          {editDialogEntry && (
+              <EditEntryDialog
+                  entry={editDialogEntry}
+                  isOpen={editDialogOpen}
+                  onOpenChange={setEditDialogOpen}
+                  onConfirmEdit={handleConfirmEdit}
+                  onCancelEdit={() => {
+                    setEditDialogOpen(false);
+                    setEditDialogEntry(null);
+                  }}
+              />
+          )}
+        </motion.div>
+        <Toaster />
+      </motion.div>
+  );
+};
+
+export default JournalApp;

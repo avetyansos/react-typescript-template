@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/select"
 import {
   DollarSign,
-  TrendingUp,
   Filter,
   List,
   CalendarDays,

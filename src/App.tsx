@@ -31,9 +31,7 @@ const MotionDiv = motion("div") as React.ComponentType<
     React.HTMLAttributes<HTMLDivElement> & MotionProps
 >;
 
-// -----------------------------------------------------------------------------
 // Types & Interfaces
-// -----------------------------------------------------------------------------
 interface JournalEntry {
   id: string;
   timestamp: number;
@@ -41,9 +39,7 @@ interface JournalEntry {
   content: string;
 }
 
-// -----------------------------------------------------------------------------
 // Header Component
-// -----------------------------------------------------------------------------
 const Header = () => (
     <header className="text-center mb-12">
       <h1 className="text-5xl sm:text-6xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-indigo-600 mb-3">
@@ -55,9 +51,7 @@ const Header = () => (
     </header>
 );
 
-// -----------------------------------------------------------------------------
 // EntryForm Component (Static New Entry Form)
-// -----------------------------------------------------------------------------
 interface EntryFormProps {
   title: string;
   content: string;
@@ -95,9 +89,7 @@ const EntryForm: React.FC<EntryFormProps> = ({ title, content, onChange, onSubmi
     </MotionForm>
 );
 
-// -----------------------------------------------------------------------------
 // EntryCard Component
-// -----------------------------------------------------------------------------
 interface EntryCardProps {
   entry: JournalEntry;
   onEdit: () => void;
@@ -151,9 +143,7 @@ const EntryCard: React.FC<EntryCardProps> = ({ entry, onEdit, onDelete }) => (
     </MotionDiv>
 );
 
-// -----------------------------------------------------------------------------
 // DeleteEntryDialog Component
-// -----------------------------------------------------------------------------
 interface DeleteEntryDialogProps {
   entry: JournalEntry;
   isOpen: boolean;
@@ -203,9 +193,7 @@ const DeleteEntryDialog: React.FC<DeleteEntryDialogProps> = ({
     </Dialog>
 );
 
-// -----------------------------------------------------------------------------
 // EditEntryDialog Component
-// -----------------------------------------------------------------------------
 interface EditEntryDialogProps {
   entry: JournalEntry;
   isOpen: boolean;
@@ -284,9 +272,7 @@ const EditEntryDialog: React.FC<EditEntryDialogProps> = ({
   );
 };
 
-// -----------------------------------------------------------------------------
 // Main JournalApp Component
-// -----------------------------------------------------------------------------
 const JournalApp = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");

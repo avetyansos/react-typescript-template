@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -29,11 +28,12 @@ import {
 import {
   DollarSign,
   Filter,
-  List,
+  ListChecks,
   CalendarDays,
   Plus,
-  BarChart,
   PieChart as PieChartIcon,
+  Clock,
+  ClipboardList,
 } from "lucide-react"
 import {
   ResponsiveContainer,
@@ -58,7 +58,6 @@ interface Expense {
   date: Date
 }
 
-// For parsing localStorage data (date as string):
 interface RawExpense {
   id: string
   description: string
@@ -67,7 +66,6 @@ interface RawExpense {
   date: string
 }
 
-// Expense categories
 const categories = [
   "Food",
   "Housing",
@@ -78,9 +76,7 @@ const categories = [
 ]
 
 const ExpenseTrackerApp = () => {
-  // --------------------
   // 1. State Management
-  // --------------------
   const [expenses, setExpenses] = useState<Expense[]>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("expenseTrackerExpenses")
@@ -104,28 +100,46 @@ const ExpenseTrackerApp = () => {
   const [category, setCategory] = useState("")
   const [date, setDate] = useState<Date>(new Date())
 
-  // --------------------
-  // 2. Side Effects
-  // --------------------
+  const [errors, setErrors] = useState<{
+    description?: string
+    amount?: string
+    category?: string
+    date?: string
+  }>({})
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("expenseTrackerExpenses", JSON.stringify(expenses))
     }
   }, [expenses])
 
-  // --------------------
-  // 3. Functions
-  // --------------------
-  // Add new expense
   const addExpense = useCallback(() => {
-    if (!description || amount === undefined || !category) {
-      alert("Please fill in all fields.")
-      return
+    const newErrors: typeof errors = {}
+
+    if (!description) {
+      newErrors.description = "Description is required."
     }
+    if (amount === undefined || isNaN(amount)) {
+      newErrors.amount = "A valid amount is required."
+    }
+    if (!category) {
+      newErrors.category = "Please select a category."
+    }
+    if (!date) {
+      newErrors.date = "Date is required."
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    } else {
+      setErrors({})
+    }
+
     const newExpense: Expense = {
       id: crypto.randomUUID(),
       description,
-      amount,
+      amount: Number(amount),
       category,
       date,
     }
@@ -134,22 +148,16 @@ const ExpenseTrackerApp = () => {
     setAmount(undefined)
     setCategory("")
     setDate(new Date())
-  }, [description, amount, category, date])
+  }, [description, amount, category, date, errors])
 
-  // Delete an expense
   const deleteExpense = useCallback((id: string) => {
     setExpenses((prev) => prev.filter((exp) => exp.id !== id))
   }, [])
 
-  // --------------------
-  // 4. Derived Data
-  // --------------------
   const totalExpenses = expenses.reduce((acc, exp) => acc + exp.amount, 0)
   const expenseCount = expenses.length
-  const latestExpenseDate =
-      expenseCount > 0 ? expenses[expenseCount - 1].date : null
+  const latestExpenseDate = expenseCount > 0 ? expenses[expenseCount - 1].date : null
 
-  // For Pie chart (category breakdown)
   const categoryData = expenses.reduce((acc, exp) => {
     const found = acc.find((item) => item.name === exp.category)
     if (found) {
@@ -160,24 +168,22 @@ const ExpenseTrackerApp = () => {
     return acc
   }, [] as { name: string; value: number }[])
 
-  // For Area chart (daily expenses)
   const dailyData = expenses.reduce((acc, exp) => {
     const dateStr = exp.date.toISOString().split("T")[0]
     const found = acc.find((item) => item.date === dateStr)
     if (found) {
-      found.total += exp.amount
+      found.dailySpent += exp.amount
     } else {
-      acc.push({ date: dateStr, total: exp.amount })
+      acc.push({ date: dateStr, dailySpent: exp.amount })
     }
     return acc
-  }, [] as { date: string; total: number }[])
+  }, [] as { date: string; dailySpent: number }[])
 
-  // --------------------
-  // 5. Rendering
-  // --------------------
+
   return (
       <div className="min-h-screen p-4 sm:p-8 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <div className="max-w-6xl mx-auto flex flex-col gap-8">
+
           {/* Title & subtitle */}
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -192,64 +198,52 @@ const ExpenseTrackerApp = () => {
           {/* Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Total Expenses */}
-            <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-md">
+            <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-none">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-full">
                   <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-300">
-                    Total Expenses
-                  </p>
-                  <h3 className="text-2xl font-bold">
-                    ${totalExpenses.toFixed(2)}
-                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">Total Expenses</p>
+                  <h3 className="text-2xl font-bold">${totalExpenses.toFixed(2)}</h3>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Filtered Total (Same for demonstration) */}
-            <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-md">
+            {/* Filtered Total (placeholder) */}
+            <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-none">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-full">
                   <Filter className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-300">
-                    Filtered Total
-                  </p>
-                  <h3 className="text-2xl font-bold">
-                    ${totalExpenses.toFixed(2)}
-                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">Filtered Total</p>
+                  <h3 className="text-2xl font-bold">${totalExpenses.toFixed(2)}</h3>
                 </div>
               </CardContent>
             </Card>
 
             {/* Expense Count */}
-            <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-md">
+            <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-none">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="bg-green-100 dark:bg-green-900/50 p-2 rounded-full">
-                  <List className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <ListChecks className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-300">
-                    Expense Count
-                  </p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">Expense Count</p>
                   <h3 className="text-2xl font-bold">{expenseCount}</h3>
                 </div>
               </CardContent>
             </Card>
 
             {/* Latest Expense */}
-            <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-md">
+            <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-none">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="bg-purple-100 dark:bg-purple-900/50 p-2 rounded-full">
                   <CalendarDays className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-300">
-                    Latest Expense
-                  </p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">Latest Expense</p>
                   <h3 className="text-lg font-bold">
                     {latestExpenseDate
                         ? latestExpenseDate.toLocaleDateString()
@@ -262,36 +256,67 @@ const ExpenseTrackerApp = () => {
 
           {/* Tabs */}
           <Tabs defaultValue="addExpense">
-            <TabsList className="grid grid-cols-2 w-full mb-4">
+            <TabsList
+                className="
+              grid grid-cols-2 w-full mb-4
+              bg-[#F1F5F9]
+              p-1
+              rounded-md
+            "
+            >
               <TabsTrigger
                   value="addExpense"
-                  className="data-[state=active]:bg-blue-100 dark:data-[state=active]:bg-blue-900/50 hover:bg-blue-50 dark:hover:bg-blue-800/50"
+                  className="
+                px-4 py-2
+                text-sm
+                border
+                border-transparent
+                rounded-md
+                data-[state=active]:bg-white
+                data-[state=active]:border
+                data-[state=active]:border-slate-200
+                data-[state=active]:shadow-sm
+              "
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Expense
               </TabsTrigger>
               <TabsTrigger
                   value="analytics"
-                  className="data-[state=active]:bg-blue-100 dark:data-[state=active]:bg-blue-900/50 hover:bg-blue-50 dark:hover:bg-blue-800/50"
+                  className="
+                px-4 py-2
+                text-sm
+                border
+                border-transparent
+                rounded-md
+                data-[state=active]:bg-white
+                data-[state=active]:border
+                data-[state=active]:border-slate-200
+                data-[state=active]:shadow-sm
+              "
               >
-                <BarChart className="h-4 w-4 mr-2" />
+                <PieChartIcon className="h-4 w-4 mr-2" />
                 Analytics
               </TabsTrigger>
             </TabsList>
 
             {/* ADD EXPENSE TAB */}
             <TabsContent value="addExpense" className="space-y-4">
-              <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-md">
-                <CardHeader className="border-b border-slate-200 dark:border-slate-700 p-4">
-                  <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                    <Plus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    Add New Expense
-                  </CardTitle>
-                  <CardDescription className="text-sm text-slate-500 dark:text-slate-400">
-                    Enter the details of your expense
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-4 space-y-4">
+              {/* Add New Expense (combined Card with extra padding) */}
+              <Card
+                  className="
+                bg-white dark:bg-slate-900
+                border border-slate-200 dark:border-slate-700
+                shadow-none
+                p-6
+              "
+              >
+                <h2 className="flex items-center gap-2 text-lg font-semibold mb-2">
+                  <Plus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  Add New Expense
+                </h2>
+                {/* Form fields */}
+                <div className="mt-4 space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Description */}
                     <div>
@@ -303,8 +328,16 @@ const ExpenseTrackerApp = () => {
                           value={description}
                           onChange={(e) => setDescription(e.target.value)}
                           placeholder="E.g. Groceries"
-                          className="mt-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600"
+                          className="
+                        mt-1
+                        border border-slate-300 dark:border-slate-600
+                        bg-transparent
+                        shadow-none
+                      "
                       />
+                      {errors.description && (
+                          <p className="text-red-500 text-xs mt-1">{errors.description}</p>
+                      )}
                     </div>
 
                     {/* Amount */}
@@ -318,8 +351,16 @@ const ExpenseTrackerApp = () => {
                           placeholder="0.00"
                           value={amount === undefined ? "" : amount}
                           onChange={(e) => setAmount(Number(e.target.value))}
-                          className="mt-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600"
+                          className="
+                        mt-1
+                        border border-slate-300 dark:border-slate-600
+                        bg-transparent
+                        shadow-none
+                      "
                       />
+                      {errors.amount && (
+                          <p className="text-red-500 text-xs mt-1">{errors.amount}</p>
+                      )}
                     </div>
 
                     {/* Category */}
@@ -327,11 +368,15 @@ const ExpenseTrackerApp = () => {
                       <Label htmlFor="category" className="text-sm font-medium">
                         Category
                       </Label>
-                      <Select
-                          onValueChange={setCategory}
-                          value={category}
-                      >
-                        <SelectTrigger className="mt-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600">
+                      <Select onValueChange={setCategory} value={category}>
+                        <SelectTrigger
+                            className="
+                          mt-1
+                          border border-slate-300 dark:border-slate-600
+                          bg-transparent
+                          shadow-none
+                        "
+                        >
                           <SelectValue placeholder="Select Category" />
                         </SelectTrigger>
                         <SelectContent className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
@@ -346,60 +391,74 @@ const ExpenseTrackerApp = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                      {errors.category && (
+                          <p className="text-red-500 text-xs mt-1">{errors.category}</p>
+                      )}
                     </div>
 
-                    {/* Date */}
+                    {/* Date (with icon on the right) */}
                     <div>
                       <Label htmlFor="date" className="text-sm font-medium">
                         Date
                       </Label>
-                      <Input
-                          id="date"
-                          type="date"
-                          value={date.toISOString().split("T")[0]}
-                          onChange={(e) => setDate(new Date(e.target.value))}
-                          className="mt-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600"
-                      />
+                      <div className="relative mt-1">
+                        <Input
+                            id="date"
+                            type="date"
+                            value={date.toISOString().split("T")[0]}
+                            onChange={(e) => setDate(new Date(e.target.value))}
+                            className="
+                          pr-10
+                          border border-slate-300 dark:border-slate-600
+                          bg-transparent
+                          shadow-none
+                          w-full
+                        "
+                        />
+                        {/* Calendar icon: pointer-events none so entire input is clickable */}
+                        <CalendarDays className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+                      {errors.date && (
+                          <p className="text-red-500 text-xs mt-1">{errors.date}</p>
+                      )}
                     </div>
                   </div>
+
                   <Button
                       onClick={addExpense}
                       className="bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-700 mt-2"
                   >
                     Add Expense
                   </Button>
-                </CardContent>
+                </div>
               </Card>
-            </TabsContent>
 
-            {/* ANALYTICS TAB */}
-            <TabsContent value="analytics" className="space-y-4">
-              {/* Expense History Table */}
-              <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-md">
+              {/* Expense History Table (moved from Analytics tab) */}
+              <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-none">
                 <CardHeader className="border-b border-slate-200 dark:border-slate-700 p-4">
                   <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                    <List className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    <ClipboardList className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                     Expense History
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4">
-                  <div className="overflow-x-auto">
-                    <Table className="min-w-full">
+                  <div className="overflow-x-auto px-2">
+                    <Table className="min-w-full border-collapse">
                       <TableHeader>
-                        <TableRow className="bg-slate-100 dark:bg-slate-800">
-                          <TableHead className="p-2 text-sm text-slate-700 dark:text-slate-300">
+                        <TableRow>
+                          <TableHead className="p-2 text-sm text-slate-700 dark:text-slate-300 border-b border-[#E2E8F0]">
                             Date
                           </TableHead>
-                          <TableHead className="p-2 text-sm text-slate-700 dark:text-slate-300">
+                          <TableHead className="p-2 text-sm text-slate-700 dark:text-slate-300 border-b border-[#E2E8F0]">
                             Description
                           </TableHead>
-                          <TableHead className="p-2 text-sm text-slate-700 dark:text-slate-300">
+                          <TableHead className="p-2 text-sm text-slate-700 dark:text-slate-300 border-b border-[#E2E8F0]">
                             Amount
                           </TableHead>
-                          <TableHead className="p-2 text-sm text-slate-700 dark:text-slate-300">
+                          <TableHead className="p-2 text-sm text-slate-700 dark:text-slate-300 border-b border-[#E2E8F0]">
                             Category
                           </TableHead>
-                          <TableHead className="p-2 text-right text-sm text-slate-700 dark:text-slate-300">
+                          <TableHead className="p-2 text-right text-sm text-slate-700 dark:text-slate-300 border-b border-[#E2E8F0]">
                             Actions
                           </TableHead>
                         </TableRow>
@@ -420,19 +479,19 @@ const ExpenseTrackerApp = () => {
                                     key={expense.id}
                                     className="hover:bg-slate-100 dark:hover:bg-slate-800"
                                 >
-                                  <TableCell className="p-2">
+                                  <TableCell className="p-2 border-b border-[#E2E8F0]">
                                     {expense.date.toLocaleDateString()}
                                   </TableCell>
-                                  <TableCell className="p-2">
+                                  <TableCell className="p-2 border-b border-[#E2E8F0]">
                                     {expense.description}
                                   </TableCell>
-                                  <TableCell className="p-2">
+                                  <TableCell className="p-2 border-b border-[#E2E8F0]">
                                     ${expense.amount.toFixed(2)}
                                   </TableCell>
-                                  <TableCell className="p-2">
+                                  <TableCell className="p-2 border-b border-[#E2E8F0]">
                                     {expense.category}
                                   </TableCell>
-                                  <TableCell className="p-2 text-right">
+                                  <TableCell className="p-2 text-right border-b border-[#E2E8F0]">
                                     <Button
                                         variant="ghost"
                                         size="sm"
@@ -450,11 +509,13 @@ const ExpenseTrackerApp = () => {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
 
-              {/* Charts */}
+            {/* ANALYTICS TAB */}
+            <TabsContent value="analytics" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Pie Chart */}
-                <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-md">
+                <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-none">
                   <CardHeader className="border-b border-slate-200 dark:border-slate-700 p-4">
                     <CardTitle className="flex items-center gap-2 text-lg font-semibold">
                       <PieChartIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -512,11 +573,11 @@ const ExpenseTrackerApp = () => {
                   </CardContent>
                 </Card>
 
-                {/* Area Chart */}
-                <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-md">
+                {/* Area Chart for Daily Expenses */}
+                <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-none">
                   <CardHeader className="border-b border-slate-200 dark:border-slate-700 p-4">
                     <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                      <BarChart className="w-5 h-5 text-green-600 dark:text-green-400" />
+                      <Clock className="w-5 h-5 text-green-600 dark:text-green-400" />
                       Daily Expenses
                     </CardTitle>
                   </CardHeader>
@@ -525,26 +586,12 @@ const ExpenseTrackerApp = () => {
                         <ResponsiveContainer width="100%" height="100%">
                           <AreaChart
                               data={dailyData}
-                              margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
+                              margin={{ top: 20, right: 30, left: 0, bottom: 8 }}
                           >
                             <defs>
-                              <linearGradient
-                                  id="colorUv"
-                                  x1="0"
-                                  y1="0"
-                                  x2="0"
-                                  y2="1"
-                              >
-                                <stop
-                                    offset="5%"
-                                    stopColor="#36A2EB"
-                                    stopOpacity={0.7}
-                                />
-                                <stop
-                                    offset="95%"
-                                    stopColor="#36A2EB"
-                                    stopOpacity={0}
-                                />
+                              <linearGradient id="colorSpent" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#36A2EB" stopOpacity={0.7} />
+                                <stop offset="95%" stopColor="#36A2EB" stopOpacity={0} />
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" />
@@ -553,9 +600,9 @@ const ExpenseTrackerApp = () => {
                             <ReTooltip
                                 formatter={(value: number) => `$${value.toFixed(2)}`}
                                 contentStyle={{
-                                  backgroundColor: "#1e293b", // dark:slate-800
-                                  borderColor: "#475569",      // dark:slate-600
-                                  color: "#f8fafc",            // dark:slate-50
+                                  backgroundColor: "#1e293b",
+                                  borderColor: "#475569",
+                                  color: "#f8fafc",
                                   borderRadius: "0.5rem",
                                   padding: "0.5rem",
                                 }}
@@ -563,10 +610,11 @@ const ExpenseTrackerApp = () => {
                             <Legend />
                             <Area
                                 type="monotone"
-                                dataKey="total"
+                                dataKey="dailySpent"
                                 stroke="#36A2EB"
                                 fillOpacity={1}
-                                fill="url(#colorUv)"
+                                fill="url(#colorSpent)"
+                                name="Daily Spent"
                             />
                           </AreaChart>
                         </ResponsiveContainer>

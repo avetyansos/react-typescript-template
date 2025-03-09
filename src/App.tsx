@@ -49,6 +49,42 @@ import {
   Legend,
 } from "recharts"
 
+const RADIAN = Math.PI / 180
+const renderCustomizedLabel = ({
+                                 cx,
+                                 cy,
+                                 midAngle,
+                                 innerRadius,
+                                 outerRadius,
+                                 percent,
+                                 name,
+                               }: {
+  cx: number
+  cy: number
+  midAngle: number
+  innerRadius: number
+  outerRadius: number
+  percent: number
+  index: number
+  name: string
+}) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5
+  const x = cx + radius * Math.cos(-midAngle * RADIAN)
+  const y = cy + radius * Math.sin(-midAngle * RADIAN)
+  return (
+      <text
+          x={x}
+          y={y}
+          fill="#fff"
+          textAnchor={x > cx ? "start" : "end"}
+          dominantBaseline="central"
+          style={{ fontSize: "0.75rem" }}
+      >
+        {`${name}: ${(percent * 100).toFixed(0)}%`}
+      </text>
+  )
+}
+
 // Define an Expense type
 interface Expense {
   id: string
@@ -148,7 +184,7 @@ const ExpenseTrackerApp = () => {
     setAmount(undefined)
     setCategory("")
     setDate(new Date())
-  }, [description, amount, category, date, errors])
+  }, [description, amount, category, date])
 
   const deleteExpense = useCallback((id: string) => {
     setExpenses((prev) => prev.filter((exp) => exp.id !== id))
@@ -179,11 +215,9 @@ const ExpenseTrackerApp = () => {
     return acc
   }, [] as { date: string; dailySpent: number }[])
 
-
   return (
       <div className="min-h-screen p-4 sm:p-8 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <div className="max-w-6xl mx-auto flex flex-col gap-8">
-
           {/* Title & subtitle */}
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -204,8 +238,12 @@ const ExpenseTrackerApp = () => {
                   <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-300">Total Expenses</p>
-                  <h3 className="text-2xl font-bold">${totalExpenses.toFixed(2)}</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    Total Expenses
+                  </p>
+                  <h3 className="text-2xl font-bold">
+                    ${totalExpenses.toFixed(2)}
+                  </h3>
                 </div>
               </CardContent>
             </Card>
@@ -217,8 +255,12 @@ const ExpenseTrackerApp = () => {
                   <Filter className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-300">Filtered Total</p>
-                  <h3 className="text-2xl font-bold">${totalExpenses.toFixed(2)}</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    Filtered Total
+                  </p>
+                  <h3 className="text-2xl font-bold">
+                    ${totalExpenses.toFixed(2)}
+                  </h3>
                 </div>
               </CardContent>
             </Card>
@@ -230,7 +272,9 @@ const ExpenseTrackerApp = () => {
                   <ListChecks className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-300">Expense Count</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    Expense Count
+                  </p>
                   <h3 className="text-2xl font-bold">{expenseCount}</h3>
                 </div>
               </CardContent>
@@ -243,8 +287,10 @@ const ExpenseTrackerApp = () => {
                   <CalendarDays className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-300">Latest Expense</p>
-                  <h3 className="text-lg font-bold">
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    Latest Expense
+                  </p>
+                  <h3 className="text-2xl font-bold">
                     {latestExpenseDate
                         ? latestExpenseDate.toLocaleDateString()
                         : "No expenses yet"}
@@ -256,44 +302,23 @@ const ExpenseTrackerApp = () => {
 
           {/* Tabs */}
           <Tabs defaultValue="addExpense">
-            <TabsList
-                className="
-              grid grid-cols-2 w-full mb-4
-              bg-[#F1F5F9]
-              p-1
-              rounded-md
-            "
-            >
+            <TabsList className="grid grid-cols-2 w-full mb-4 bg-slate-50 dark:bg-slate-800 p-1 rounded-md">
               <TabsTrigger
                   value="addExpense"
-                  className="
-                px-4 py-2
-                text-sm
-                border
-                border-transparent
-                rounded-md
-                data-[state=active]:bg-white
-                data-[state=active]:border
-                data-[state=active]:border-slate-200
-                data-[state=active]:shadow-sm
-              "
+                  className="px-4 py-2 text-sm border border-transparent rounded-md bg-transparent text-slate-900 dark:text-slate-300
+                data-[state=active]:bg-[#2463eb] dark:data-[state=active]:bg-[#0b172a]
+                data-[state=active]:border data-[state=active]:border-slate-200
+                data-[state=active]:shadow-sm data-[state=active]:text-white"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Expense
               </TabsTrigger>
               <TabsTrigger
                   value="analytics"
-                  className="
-                px-4 py-2
-                text-sm
-                border
-                border-transparent
-                rounded-md
-                data-[state=active]:bg-white
-                data-[state=active]:border
-                data-[state=active]:border-slate-200
-                data-[state=active]:shadow-sm
-              "
+                  className="px-4 py-2 text-sm border border-transparent rounded-md bg-transparent text-slate-900 dark:text-slate-300
+                data-[state=active]:bg-[#2463eb] dark:data-[state=active]:bg-[#0b172a]
+                data-[state=active]:border data-[state=active]:border-slate-200
+                data-[state=active]:shadow-sm data-[state=active]:text-white"
               >
                 <PieChartIcon className="h-4 w-4 mr-2" />
                 Analytics
@@ -302,138 +327,134 @@ const ExpenseTrackerApp = () => {
 
             {/* ADD EXPENSE TAB */}
             <TabsContent value="addExpense" className="space-y-4">
-              {/* Add New Expense (combined Card with extra padding) */}
-              <Card
-                  className="
-                bg-white dark:bg-slate-900
-                border border-slate-200 dark:border-slate-700
-                shadow-none
-                p-6
-              "
-              >
-                <h2 className="flex items-center gap-2 text-lg font-semibold mb-2">
-                  <Plus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  Add New Expense
-                </h2>
-                {/* Form fields */}
-                <div className="mt-4 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Description */}
-                    <div>
-                      <Label htmlFor="description" className="text-sm font-medium">
-                        Description
-                      </Label>
-                      <Input
-                          id="description"
-                          value={description}
-                          onChange={(e) => setDescription(e.target.value)}
-                          placeholder="E.g. Groceries"
-                          className="
-                        mt-1
-                        border border-slate-300 dark:border-slate-600
-                        bg-transparent
-                        shadow-none
-                      "
-                      />
-                      {errors.description && (
-                          <p className="text-red-500 text-xs mt-1">{errors.description}</p>
-                      )}
-                    </div>
+              {/* Add New Expense Section */}
+              <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-none p-6">
+                <CardHeader className="border-b border-slate-200 dark:border-slate-700 pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                    <Plus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    Add New Expense
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  {/* Form fields */}
+                  <div className="mt-4 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Description */}
+                      <div>
+                        <Label htmlFor="description" className="text-sm font-medium">
+                          Description
+                        </Label>
+                        <Input
+                            id="description"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="E.g. Groceries"
+                            className={`mt-1 bg-transparent shadow-none ${
+                                errors.description
+                                    ? "border-red-500"
+                                    : "border border-slate-300 dark:border-slate-600"
+                            }`}
+                        />
+                        {errors.description && (
+                            <p className="text-red-500 text-xs mt-1">
+                              {errors.description}
+                            </p>
+                        )}
+                      </div>
 
-                    {/* Amount */}
-                    <div>
-                      <Label htmlFor="amount" className="text-sm font-medium">
-                        Amount
-                      </Label>
-                      <Input
-                          id="amount"
-                          type="number"
-                          placeholder="0.00"
-                          value={amount === undefined ? "" : amount}
-                          onChange={(e) => setAmount(Number(e.target.value))}
-                          className="
-                        mt-1
-                        border border-slate-300 dark:border-slate-600
-                        bg-transparent
-                        shadow-none
-                      "
-                      />
-                      {errors.amount && (
-                          <p className="text-red-500 text-xs mt-1">{errors.amount}</p>
-                      )}
-                    </div>
+                      {/* Amount */}
+                      <div>
+                        <Label htmlFor="amount" className="text-sm font-medium">
+                          Amount
+                        </Label>
+                        <Input
+                            id="amount"
+                            type="number"
+                            placeholder="0.00"
+                            value={amount === undefined ? "" : amount}
+                            onChange={(e) => setAmount(Number(e.target.value))}
+                            className={`mt-1 bg-transparent shadow-none ${
+                                errors.amount
+                                    ? "border-red-500"
+                                    : "border border-slate-300 dark:border-slate-600"
+                            }`}
+                        />
+                        {errors.amount && (
+                            <p className="text-red-500 text-xs mt-1">
+                              {errors.amount}
+                            </p>
+                        )}
+                      </div>
 
-                    {/* Category */}
-                    <div>
-                      <Label htmlFor="category" className="text-sm font-medium">
-                        Category
-                      </Label>
-                      <Select onValueChange={setCategory} value={category}>
-                        <SelectTrigger
-                            className="
-                          mt-1
-                          border border-slate-300 dark:border-slate-600
-                          bg-transparent
-                          shadow-none
-                        "
-                        >
-                          <SelectValue placeholder="Select Category" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                          {categories.map((cat) => (
-                              <SelectItem
-                                  key={cat}
-                                  value={cat}
-                                  className="hover:bg-slate-100 dark:hover:bg-slate-700"
-                              >
-                                {cat}
-                              </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {errors.category && (
-                          <p className="text-red-500 text-xs mt-1">{errors.category}</p>
-                      )}
-                    </div>
+                      {/* Category */}
+                      <div>
+                        <Label htmlFor="category" className="text-sm font-medium">
+                          Category
+                        </Label>
+                        <Select onValueChange={setCategory} value={category}>
+                          <SelectTrigger
+                              className={`mt-1 bg-transparent shadow-none ${
+                                  errors.category
+                                      ? "border-red-500"
+                                      : "border border-slate-300 dark:border-slate-600"
+                              }`}
+                          >
+                            <SelectValue placeholder="Select Category" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                            {categories.map((cat) => (
+                                <SelectItem
+                                    key={cat}
+                                    value={cat}
+                                    className="hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-white"
+                                >
+                                  {cat}
+                                </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {errors.category && (
+                            <p className="text-red-500 text-xs mt-1">
+                              {errors.category}
+                            </p>
+                        )}
+                      </div>
 
-                    {/* Date (with icon on the right) */}
-                    <div>
-                      <Label htmlFor="date" className="text-sm font-medium">
-                        Date
-                      </Label>
-                      <div className="relative mt-1">
+                      {/* Date */}
+                      <div>
+                        <Label htmlFor="date" className="text-sm font-medium">
+                          Date
+                        </Label>
                         <Input
                             id="date"
                             type="date"
                             value={date.toISOString().split("T")[0]}
                             onChange={(e) => setDate(new Date(e.target.value))}
-                            className="
-                          pr-10
-                          border border-slate-300 dark:border-slate-600
-                          bg-transparent
-                          shadow-none
-                          w-full
-                        "
+                            className={`w-full bg-transparent shadow-none ${
+                                errors.date
+                                    ? "border-red-500"
+                                    : "border border-slate-300 dark:border-slate-600"
+                            }`}
                         />
-                        {/* Calendar icon: pointer-events none so entire input is clickable */}
-                        <CalendarDays className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        {errors.date && (
+                            <p className="text-red-500 text-xs mt-1">
+                              {errors.date}
+                            </p>
+                        )}
                       </div>
-                      {errors.date && (
-                          <p className="text-red-500 text-xs mt-1">{errors.date}</p>
-                      )}
                     </div>
-                  </div>
 
-                  <Button
-                      onClick={addExpense}
-                      className="bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-700 mt-2"
-                  >
-                    Add Expense
-                  </Button>
-                </div>
+                    <Button
+                        onClick={addExpense}
+                        className="bg-[#2463eb] text-white hover:bg-[#2157c4] mt-2"
+                    >
+                      Add Expense
+                    </Button>
+                  </div>
+                </CardContent>
               </Card>
 
-              {/* Expense History Table (moved from Analytics tab) */}
+              {/* Expense History Table */}
               <Card className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-none">
                 <CardHeader className="border-b border-slate-200 dark:border-slate-700 p-4">
                   <CardTitle className="flex items-center gap-2 text-lg font-semibold">
@@ -533,31 +554,27 @@ const ExpenseTrackerApp = () => {
                                 cx="50%"
                                 cy="50%"
                                 outerRadius={80}
-                                label={({ name, percent }) =>
-                                    `${name}: ${(percent * 100).toFixed(0)}%`
-                                }
+                                label={renderCustomizedLabel}
                             >
                               {categoryData.map((_, index) => (
                                   <Cell
                                       key={`pie-cell-${index}`}
-                                      fill={
-                                        [
-                                          "#FF6384",
-                                          "#36A2EB",
-                                          "#FFCE56",
-                                          "#4BC0C0",
-                                          "#9966FF",
-                                        ][index % 5]
-                                      }
+                                      fill={[
+                                        "#FF6384",
+                                        "#36A2EB",
+                                        "#FFCE56",
+                                        "#4BC0C0",
+                                        "#9966FF",
+                                      ][index % 5]}
                                   />
                               ))}
                             </Pie>
                             <ReTooltip
                                 formatter={(value: number) => `$${value.toFixed(2)}`}
                                 contentStyle={{
-                                  backgroundColor: "#1e293b", // dark:slate-800
-                                  borderColor: "#475569",      // dark:slate-600
-                                  color: "#f8fafc",            // dark:slate-50
+                                  backgroundColor: "#1e293b",
+                                  borderColor: "#475569",
+                                  color: "#f8fafc",
                                   borderRadius: "0.5rem",
                                   padding: "0.5rem",
                                 }}

@@ -305,20 +305,20 @@ const ExpenseTrackerApp = () => {
             <TabsList className="grid grid-cols-2 w-full mb-4 bg-slate-50 dark:bg-slate-800 p-1 rounded-md">
               <TabsTrigger
                   value="addExpense"
-                  className="px-4 py-2 text-sm border border-transparent rounded-md bg-transparent text-slate-900 dark:text-slate-300
-                data-[state=active]:bg-[#2463eb] dark:data-[state=active]:bg-[#0b172a]
-                data-[state=active]:border data-[state=active]:border-slate-200
-                data-[state=active]:shadow-sm data-[state=active]:text-white"
+                  className="px-4 py-2 text-sm border border-transparent rounded-md bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-300
+    data-[state=active]:bg-[#2463eb] dark:data-[state=active]:bg-[#0b172a]
+    data-[state=active]:border data-[state=active]:border-slate-200
+    data-[state=active]:shadow-sm data-[state=active]:text-white"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Expense
               </TabsTrigger>
               <TabsTrigger
                   value="analytics"
-                  className="px-4 py-2 text-sm border border-transparent rounded-md bg-transparent text-slate-900 dark:text-slate-300
-                data-[state=active]:bg-[#2463eb] dark:data-[state=active]:bg-[#0b172a]
-                data-[state=active]:border data-[state=active]:border-slate-200
-                data-[state=active]:shadow-sm data-[state=active]:text-white"
+                  className="px-4 py-2 text-sm border border-transparent rounded-md bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-300
+    data-[state=active]:bg-[#2463eb] dark:data-[state=active]:bg-[#0b172a]
+    data-[state=active]:border data-[state=active]:border-slate-200
+    data-[state=active]:shadow-sm data-[state=active]:text-white"
               >
                 <PieChartIcon className="h-4 w-4 mr-2" />
                 Analytics
@@ -430,7 +430,7 @@ const ExpenseTrackerApp = () => {
                             type="date"
                             value={date.toISOString().split("T")[0]}
                             onChange={(e) => setDate(new Date(e.target.value))}
-                            className={`w-full bg-transparent shadow-none ${
+                            className={`mt-1 w-full bg-transparent shadow-none ${
                                 errors.date
                                     ? "border-red-500"
                                     : "border border-slate-300 dark:border-slate-600"

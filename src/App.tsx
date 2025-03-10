@@ -66,7 +66,6 @@ function SudokuCell({
         ? "text-blue-800 dark:text-blue-300 font-extrabold"
         : "text-blue-700 dark:text-blue-300",
 
-    // Use whichever background logic you need:
     isSelected
         ? "bg-blue-200 dark:bg-blue-800 ring-blue-500 dark:ring-blue-300 ring-2"
         : isRelated
@@ -74,7 +73,7 @@ function SudokuCell({
             : "bg-white dark:bg-gray-800",
 
     hasError
-        ? "bg-red-100 dark:bg-red-800/40 text-red-800 dark:text-red-100"
+        ? "bg-red-100 dark:bg-red-800/40 border border-red-400"
         : "",
 
     disabled ? "cursor-not-allowed opacity-60" : "",
@@ -97,15 +96,15 @@ function SudokuCell({
 }
 
 function canPlace(board: SudokuBoard, row: number, col: number, val: number): boolean {
-  // Row check
+  // Check row
   for (let c = 0; c < 9; c++) {
     if (board[row][c] === val) return false;
   }
-  // Column check
+  // Check col
   for (let r = 0; r < 9; r++) {
     if (board[r][col] === val) return false;
   }
-  // 3x3 box check
+  // Check box
   const boxRow = Math.floor(row / 3) * 3;
   const boxCol = Math.floor(col / 3) * 3;
   for (let rr = boxRow; rr < boxRow + 3; rr++) {
@@ -134,14 +133,12 @@ function solveSudoku(board: SudokuBoard): boolean {
   return true;
 }
 
-/** Generate a fully solved 9x9 Sudoku board */
 function generateFullSolution(): SudokuBoard {
   const board: SudokuBoard = Array.from({ length: 9 }, () => Array(9).fill(null));
   solveSudoku(board);
   return board;
 }
 
-/** Remove cells from a solved board based on difficulty */
 function generatePuzzle(difficulty: Difficulty): SudokuBoard {
   const removalMap: Record<Difficulty, number> = {
     easy: 35,
@@ -149,7 +146,7 @@ function generatePuzzle(difficulty: Difficulty): SudokuBoard {
     hard: 55,
     expert: 60,
   };
-  const puzzle = generateFullSolution().map((row) => [...row]);
+  const puzzle = generateFullSolution().map((row) => [...row]); // copy
   let cellsToRemove = removalMap[difficulty];
 
   while (cellsToRemove > 0) {
@@ -163,14 +160,28 @@ function generatePuzzle(difficulty: Difficulty): SudokuBoard {
   return puzzle;
 }
 
+function generatePuzzleAndSolution(difficulty: Difficulty): [SudokuBoard, SudokuBoard] {
+  const puzzle = generatePuzzle(difficulty);
+  const puzzleCopy: SudokuBoard = puzzle.map((row) => [...row]);
+  solveSudoku(puzzleCopy);
+  return [puzzle, puzzleCopy];
+}
+
 export default function SudokuApp() {
   const [darkMode] = useState(false);
 
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
-  const [board, setBoard] = useState<SudokuBoard>(() => generatePuzzle("medium"));
-  const [originalBoard, setOriginalBoard] = useState<SudokuBoard>(() => generatePuzzle("medium"));
+
+  const [[board, solutionBoard], setBoards] = useState<[SudokuBoard, SudokuBoard]>(() => {
+    const [puzzle, solution] = generatePuzzleAndSolution("medium");
+    return [puzzle, solution];
+  });
+
+  const [originalBoard, setOriginalBoard] = useState<SudokuBoard>(board);
   const [selectedCell, setSelectedCell] = useState<Position | null>(null);
+
   const [errors, setErrors] = useState<Set<string>>(new Set());
+
   const [gameState, setGameState] = useState<GameState>("playing");
   const [message, setMessage] = useState<GameMessageProps | null>(null);
 
@@ -184,7 +195,7 @@ export default function SudokuApp() {
       }, 1000);
     } else if (timerRef.current) {
       clearInterval(timerRef.current);
-      timerRef.current = null; // always reset to null after clearing
+      timerRef.current = null;
     }
 
     return () => {
@@ -196,8 +207,8 @@ export default function SudokuApp() {
   }, [gameState]);
 
   useEffect(() => {
-    const newPuzzle = generatePuzzle(difficulty);
-    setBoard(newPuzzle);
+    const [newPuzzle, newSolution] = generatePuzzleAndSolution(difficulty);
+    setBoards([newPuzzle, newSolution]);
     setOriginalBoard(newPuzzle);
     setSelectedCell(null);
     setErrors(new Set());
@@ -224,12 +235,27 @@ export default function SudokuApp() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedCell, board, gameState]);
+  }, [selectedCell, board, gameState, originalBoard]);
 
   function formatTime(sec: number) {
     const mm = Math.floor(sec / 60);
     const ss = sec % 60;
     return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+  }
+
+  function isBoardFull(bd: SudokuBoard): boolean {
+    return bd.every((row) => row.every((cell) => cell !== null));
+  }
+
+  function isBoardFullyCorrect(bd: SudokuBoard): boolean {
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (bd[r][c] !== solutionBoard[r][c]) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   function handleCellClick(r: number, c: number) {
@@ -241,10 +267,11 @@ export default function SudokuApp() {
   function clearCell() {
     if (!selectedCell) return;
     const [r, c] = selectedCell;
+
     if (originalBoard[r][c] !== null) return;
+
     const newBoard = board.map((row) => [...row]);
     newBoard[r][c] = null;
-    setBoard(newBoard);
 
     const key = `${r}-${c}`;
     if (errors.has(key)) {
@@ -252,34 +279,44 @@ export default function SudokuApp() {
       newErrors.delete(key);
       setErrors(newErrors);
     }
+
+    setBoards([newBoard, solutionBoard]);
   }
 
   function placeNumber(num: number) {
     if (!selectedCell) return;
     const [r, c] = selectedCell;
+
     if (originalBoard[r][c] !== null) return;
 
     const newBoard = board.map((row) => [...row]);
     newBoard[r][c] = num;
-    setBoard(newBoard);
 
     const key = `${r}-${c}`;
-    if (!canPlace(newBoard, r, c, num)) {
+
+    if (num !== solutionBoard[r][c]) {
+      // Mark as error
       const newErrors = new Set(errors);
       newErrors.add(key);
       setErrors(newErrors);
+
       setMessage({
         type: "info",
-        title: "Conflict",
-        detail: "Check row, column, and 3×3 subgrid.",
+        title: "Incorrect",
+        detail: "This number is not correct for this cell.",
       });
     } else {
+      // If previously flagged an error, remove it
       if (errors.has(key)) {
         const newErrors = new Set(errors);
         newErrors.delete(key);
         setErrors(newErrors);
       }
-      if (isBoardFull(newBoard) && verifySolution(newBoard)) {
+      // Hide any "incorrect" messages after a correct move
+      setMessage(null);
+
+      // Check if puzzle is complete and correct
+      if (isBoardFull(newBoard) && isBoardFullyCorrect(newBoard)) {
         setGameState("solved");
         setMessage({
           type: "success",
@@ -288,25 +325,13 @@ export default function SudokuApp() {
         });
       }
     }
-  }
 
-  function isBoardFull(bd: SudokuBoard): boolean {
-    return bd.every((row) => row.every((cell) => cell !== null));
-  }
-
-  function verifySolution(bd: SudokuBoard): boolean {
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        const val = bd[r][c];
-        if (val === null || !canPlace(bd, r, c, val)) return false;
-      }
-    }
-    return true;
+    setBoards([newBoard, solutionBoard]);
   }
 
   function resetGame() {
-    const newPuzzle = generatePuzzle(difficulty);
-    setBoard(newPuzzle);
+    const [newPuzzle, newSolution] = generatePuzzleAndSolution(difficulty);
+    setBoards([newPuzzle, newSolution]);
     setOriginalBoard(newPuzzle);
     setSelectedCell(null);
     setErrors(new Set());
@@ -320,35 +345,16 @@ export default function SudokuApp() {
   }
 
   function getHint(): string {
-    // If there's exactly one candidate in a cell, show that
+    // Search for the first empty cell in user board
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
         if (board[r][c] === null) {
-          const candidates: number[] = [];
-          for (let val = 1; val <= 9; val++) {
-            if (canPlace(board, r, c, val)) candidates.push(val);
-          }
-          if (candidates.length === 1) {
-            return `Row ${r + 1}, Col ${c + 1} must be ${candidates[0]}.`;
-          }
+          const correctDigit = solutionBoard[r][c];
+          return `Row ${r + 1}, Col ${c + 1} must be ${correctDigit}.`;
         }
       }
     }
-    // Otherwise, show smaller sets of candidates if found
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        if (board[r][c] === null) {
-          const candidates: number[] = [];
-          for (let val = 1; val <= 9; val++) {
-            if (canPlace(board, r, c, val)) candidates.push(val);
-          }
-          if (candidates.length >= 2 && candidates.length <= 3) {
-            return `Possible values at row ${r + 1}, col ${c + 1}: [${candidates.join(", ")}].`;
-          }
-        }
-      }
-    }
-    return "Try scanning rows & columns for single possible moves!";
+    return "No hints available! (Board is complete or no empty cells).";
   }
 
   const [showHint, setShowHint] = useState(false);
@@ -357,12 +363,14 @@ export default function SudokuApp() {
       <div className={darkMode ? "dark" : ""}>
         <main className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
           <div className="max-w-lg mx-auto">
+            {/* Title */}
             <div className="flex justify-center mb-6">
               <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 bg-white/70 dark:bg-gray-800/60 px-4 py-2 rounded-md shadow-sm">
                 SudokuApp
               </h1>
             </div>
 
+            {/* Sudoku Board Section */}
             <div
                 className="rounded-xl shadow-md p-6 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 role="region"
@@ -373,6 +381,7 @@ export default function SudokuApp() {
                 {message && <div className="w-1/2" />}
               </div>
 
+              {/* Sudoku Grid */}
               <div
                   className="grid grid-cols-9 gap-px bg-gray-300 dark:bg-gray-700 p-px rounded-md"
                   role="grid"
@@ -383,10 +392,9 @@ export default function SudokuApp() {
                       {row.map((cellVal, c) => {
                         const isCellSelected = selectedCell?.[0] === r && selectedCell?.[1] === c;
                         const isRelated =
-                            // If there's no selectedCell, this becomes false automatically
+                            // highlight if same row, col, or box
                             isCellSelected ||
-                            (selectedCell &&
-                                (selectedCell[0] === r || selectedCell[1] === c)) ||
+                            (selectedCell && (selectedCell[0] === r || selectedCell[1] === c)) ||
                             (selectedCell &&
                                 Math.floor(r / 3) === Math.floor(selectedCell[0] / 3) &&
                                 Math.floor(c / 3) === Math.floor(selectedCell[1] / 3));
@@ -401,7 +409,6 @@ export default function SudokuApp() {
                                 col={c}
                                 isGiven={originalBoard[r][c] !== null}
                                 isSelected={isCellSelected}
-                                // Pass isRelated directly; it is already a boolean
                                 isRelated={!!isRelated}
                                 hasError={errors.has(cellKey)}
                                 onClick={() => handleCellClick(r, c)}
@@ -413,20 +420,24 @@ export default function SudokuApp() {
                 ))}
               </div>
 
+              {/* Possible message (error, conflict, solved, etc.) */}
               {message && <GameMessage {...message} />}
 
+              {/* Small guidance text */}
               {!message && gameState === "playing" && (
                   <div className="text-sm text-center text-gray-600 dark:text-gray-400 mt-3">
                     Select a cell, then type 1–9, or press Backspace/Delete to clear
                   </div>
               )}
 
+              {/* Bottom Controls */}
               <div className="mt-6 space-y-4">
+                {/* Difficulty Selector */}
                 <div className="p-3 bg-gray-100 dark:bg-gray-700/50 rounded-md">
                   <div className="text-sm font-semibold mb-2 text-gray-800 dark:text-gray-200">
                     Difficulty:
                   </div>
-                  <div className="flex space-x-2">
+                  <div className="flex flex-wrap gap-2">
                     {(["easy", "medium", "hard", "expert"] as Difficulty[]).map((lvl) => (
                         <button
                             key={lvl}
@@ -443,7 +454,9 @@ export default function SudokuApp() {
                   </div>
                 </div>
 
+                {/* Toolbar Buttons */}
                 <div className="grid grid-cols-3 gap-4" role="toolbar" aria-label="Sudoku Controls">
+                  {/* Clear */}
                   <button
                       onClick={clearCell}
                       disabled={!selectedCell || gameState !== "playing"}
@@ -453,6 +466,7 @@ export default function SudokuApp() {
                     <span className="text-sm">Clear</span>
                   </button>
 
+                  {/* Hint */}
                   <div className="relative">
                     <button
                         onClick={() => setShowHint((prev) => !prev)}
@@ -476,6 +490,7 @@ export default function SudokuApp() {
                     )}
                   </div>
 
+                  {/* Reset */}
                   <button
                       onClick={resetGame}
                       className="flex flex-col items-center justify-center gap-1 p-3 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-100 transition"

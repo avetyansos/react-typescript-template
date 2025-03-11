@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  KeyboardEvent as ReactKeyboardEvent,
+  ChangeEvent,
+} from "react";
 import { RotateCcw, Eraser, Lightbulb } from "lucide-react";
 
 type SudokuBoard = (number | null)[][];
@@ -57,25 +63,26 @@ function SudokuCell({
                       onClick,
                       disabled,
                     }: SudokuCellProps) {
+  // CHANGED: conditionally apply hover/pointer only if not given
+  const interactiveClasses = !isGiven
+      ? "cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700/50"
+      : "cursor-default"; // no pointer or hover effect for given cells
+
   const classes = [
     "aspect-square flex items-center justify-center text-base font-semibold select-none",
     "transition-colors duration-300 focus:outline-none focus:ring-2",
-    "hover:bg-gray-200 dark:hover:bg-gray-700/50",
-
+    interactiveClasses, // CHANGED
     isGiven
         ? "text-blue-800 dark:text-blue-300 font-extrabold"
         : "text-blue-700 dark:text-blue-300",
-
     isSelected
         ? "bg-blue-200 dark:bg-blue-800 ring-blue-500 dark:ring-blue-300 ring-2"
         : isRelated
-            ? "bg-gradient-to-br from-yellow-100/80 to-amber-200/80 dark:bg-gradient-to-br dark:from-yellow-700/60 dark:to-amber-800/60"
+            ? "bg-[#eff6fe]" // CHANGED: replaced yellow highlight with #eff6fe
             : "bg-white dark:bg-gray-800",
-
     hasError
         ? "bg-red-100 dark:bg-red-800/40 border border-red-400"
         : "",
-
     disabled ? "cursor-not-allowed opacity-60" : "",
   ]
       .filter(Boolean)
@@ -86,7 +93,7 @@ function SudokuCell({
           type="button"
           className={classes}
           onClick={onClick}
-          disabled={disabled}
+          disabled={disabled || isGiven} // CHANGED: also disable if isGiven
           aria-label={`Row ${row + 1}, Column ${col + 1}`}
           aria-selected={isSelected}
       >
@@ -167,6 +174,13 @@ function generatePuzzleAndSolution(difficulty: Difficulty): [SudokuBoard, Sudoku
   return [puzzle, puzzleCopy];
 }
 
+// CHANGED: a helpful default message object to revert to after clearing an error
+const defaultPlayingMessage: GameMessageProps = {
+  type: "info",
+  title: "Instruction",
+  detail: "Select a cell, then type 1–9, or press Backspace/Delete to clear",
+};
+
 export default function SudokuApp() {
   const [darkMode] = useState(false);
 
@@ -183,10 +197,13 @@ export default function SudokuApp() {
   const [errors, setErrors] = useState<Set<string>>(new Set());
 
   const [gameState, setGameState] = useState<GameState>("playing");
-  const [message, setMessage] = useState<GameMessageProps | null>(null);
+  const [message, setMessage] = useState<GameMessageProps | null>(defaultPlayingMessage);
 
   const [time, setTime] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // CHANGED: ref for hidden input (mobile keyboard)
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (gameState === "playing") {
@@ -207,6 +224,7 @@ export default function SudokuApp() {
   }, [gameState]);
 
   useEffect(() => {
+    // Generate new puzzle whenever difficulty changes
     const [newPuzzle, newSolution] = generatePuzzleAndSolution(difficulty);
     setBoards([newPuzzle, newSolution]);
     setOriginalBoard(newPuzzle);
@@ -221,6 +239,7 @@ export default function SudokuApp() {
     });
   }, [difficulty]);
 
+  // CHANGED: Keep the existing keydown for desktop/laptop usage
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!selectedCell || gameState !== "playing") return;
@@ -236,6 +255,31 @@ export default function SudokuApp() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedCell, board, gameState, originalBoard]);
+
+  // CHANGED: Whenever user selects a cell, focus the hidden input (mobile)
+  useEffect(() => {
+    if (selectedCell && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [selectedCell]);
+
+  // CHANGED: handle text input changes from hidden input on mobile
+  function handleInputChange(e: ChangeEvent<HTMLInputElement>) {
+    if (!selectedCell || gameState !== "playing") {
+      e.target.value = "";
+      return;
+    }
+    const val = e.target.value;
+    // If empty => treat as a clear
+    // If single digit (1-9) => place that number
+    // Then reset input to ""
+    if (val === "") {
+      clearCell();
+    } else if (/^[1-9]$/.test(val)) {
+      placeNumber(parseInt(val, 10));
+    }
+    e.target.value = "";
+  }
 
   function formatTime(sec: number) {
     const mm = Math.floor(sec / 60);
@@ -259,6 +303,7 @@ export default function SudokuApp() {
   }
 
   function handleCellClick(r: number, c: number) {
+    // Only allow selection if the cell isn't given and the game is still playing
     if (originalBoard[r][c] === null && gameState === "playing") {
       setSelectedCell([r, c]);
     }
@@ -301,10 +346,18 @@ export default function SudokuApp() {
       setErrors(newErrors);
 
       setMessage({
-        type: "info",
+        type: "error",
         title: "Incorrect",
         detail: "This number is not correct for this cell.",
       });
+
+      // CHANGED: keep error message for 20s, then revert to default
+      setTimeout(() => {
+        // Only revert if the game is still playing
+        if (gameState === "playing") {
+          setMessage(defaultPlayingMessage);
+        }
+      }, 20000);
     } else {
       // If previously flagged an error, remove it
       if (errors.has(key)) {
@@ -312,7 +365,7 @@ export default function SudokuApp() {
         newErrors.delete(key);
         setErrors(newErrors);
       }
-      // Hide any "incorrect" messages after a correct move
+      // Hide "incorrect" messages or revert to default if no other errors
       setMessage(null);
 
       // Check if puzzle is complete and correct
@@ -382,8 +435,9 @@ export default function SudokuApp() {
               </div>
 
               {/* Sudoku Grid */}
+              {/* CHANGED: added overflow-hidden to preserve rounded corners */}
               <div
-                  className="grid grid-cols-9 gap-px bg-gray-300 dark:bg-gray-700 p-px rounded-md"
+                  className="grid grid-cols-9 gap-px bg-gray-300 dark:bg-gray-700 p-px rounded-md overflow-hidden"
                   role="grid"
                   aria-label="Sudoku Puzzle"
               >
@@ -391,13 +445,13 @@ export default function SudokuApp() {
                     <React.Fragment key={`row-${r}`}>
                       {row.map((cellVal, c) => {
                         const isCellSelected = selectedCell?.[0] === r && selectedCell?.[1] === c;
+                        // highlight if same row, col, or box as selected
                         const isRelated =
-                            // highlight if same row, col, or box
-                            isCellSelected ||
-                            (selectedCell && (selectedCell[0] === r || selectedCell[1] === c)) ||
-                            (selectedCell &&
-                                Math.floor(r / 3) === Math.floor(selectedCell[0] / 3) &&
-                                Math.floor(c / 3) === Math.floor(selectedCell[1] / 3));
+                            selectedCell !== null &&
+                            (selectedCell[0] === r ||
+                                selectedCell[1] === c ||
+                                (Math.floor(r / 3) === Math.floor(selectedCell[0] / 3) &&
+                                    Math.floor(c / 3) === Math.floor(selectedCell[1] / 3)));
 
                         const cellKey = `${r}-${c}`;
 
@@ -409,7 +463,7 @@ export default function SudokuApp() {
                                 col={c}
                                 isGiven={originalBoard[r][c] !== null}
                                 isSelected={isCellSelected}
-                                isRelated={!!isRelated}
+                                isRelated={isRelated}
                                 hasError={errors.has(cellKey)}
                                 onClick={() => handleCellClick(r, c)}
                                 disabled={gameState === "solved"}
@@ -423,12 +477,23 @@ export default function SudokuApp() {
               {/* Possible message (error, conflict, solved, etc.) */}
               {message && <GameMessage {...message} />}
 
-              {/* Small guidance text */}
+              {/* If there's no message, show default instructions (when playing) */}
               {!message && gameState === "playing" && (
                   <div className="text-sm text-center text-gray-600 dark:text-gray-400 mt-3">
                     Select a cell, then type 1–9, or press Backspace/Delete to clear
                   </div>
               )}
+
+              {/* Hidden input for mobile keyboard */}
+              {/* CHANGED: focuses on cell select, handles numeric input */}
+              <input
+                  ref={inputRef}
+                  type="tel"
+                  onChange={handleInputChange}
+                  className="absolute opacity-0 pointer-events-none"
+                  aria-hidden="true"
+                  // The input is "hidden" but we rely on it for opening mobile keyboard
+              />
 
               {/* Bottom Controls */}
               <div className="mt-6 space-y-4">
@@ -442,7 +507,7 @@ export default function SudokuApp() {
                         <button
                             key={lvl}
                             onClick={() => setDifficulty(lvl)}
-                            className={`px-3 py-1.5 rounded-md transition-colors ${
+                            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
                                 difficulty === lvl
                                     ? "bg-blue-600 dark:bg-blue-500 text-white font-semibold"
                                     : "bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-100"
@@ -455,12 +520,16 @@ export default function SudokuApp() {
                 </div>
 
                 {/* Toolbar Buttons */}
-                <div className="grid grid-cols-3 gap-4" role="toolbar" aria-label="Sudoku Controls">
+                <div
+                    className="grid grid-cols-3 gap-4"
+                    role="toolbar"
+                    aria-label="Sudoku Controls"
+                >
                   {/* Clear */}
                   <button
                       onClick={clearCell}
                       disabled={!selectedCell || gameState !== "playing"}
-                      className="flex flex-col items-center justify-center gap-1 p-3 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-100 transition disabled:opacity-40"
+                      className="flex flex-col items-center justify-center gap-1 p-3 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-100 transition disabled:opacity-40 cursor-pointer"
                   >
                     <Eraser className="w-5 h-5" />
                     <span className="text-sm">Clear</span>
@@ -468,10 +537,11 @@ export default function SudokuApp() {
 
                   {/* Hint */}
                   <div className="relative">
+                    {/* CHANGED: move tooltip above -> use bottom-full instead of top-full */}
                     <button
                         onClick={() => setShowHint((prev) => !prev)}
                         disabled={gameState !== "playing"}
-                        className="w-full flex flex-col items-center justify-center gap-1 p-3 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-100 transition disabled:opacity-40"
+                        className="w-full flex flex-col items-center justify-center gap-1 p-3 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-100 transition disabled:opacity-40 cursor-pointer"
                         aria-expanded={showHint}
                     >
                       <Lightbulb className="w-5 h-5" />
@@ -479,7 +549,7 @@ export default function SudokuApp() {
                     </button>
                     {showHint && (
                         <div
-                            className="absolute top-full mt-2 p-3 rounded-md shadow-md bg-white dark:bg-gray-800 text-sm text-gray-800 dark:text-gray-100 w-64 z-10"
+                            className="absolute bottom-full mb-2 p-3 rounded-md shadow-md bg-white dark:bg-gray-800 text-sm text-gray-800 dark:text-gray-100 w-64 z-10"
                             role="tooltip"
                         >
                           <p className="font-medium text-blue-800 dark:text-blue-300 mb-1">
@@ -493,7 +563,7 @@ export default function SudokuApp() {
                   {/* Reset */}
                   <button
                       onClick={resetGame}
-                      className="flex flex-col items-center justify-center gap-1 p-3 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-100 transition"
+                      className="flex flex-col items-center justify-center gap-1 p-3 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-100 transition cursor-pointer"
                   >
                     <RotateCcw className="w-5 h-5" />
                     <span className="text-sm">Reset</span>

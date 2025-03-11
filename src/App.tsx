@@ -4,7 +4,6 @@ import React, {
   useState,
   useEffect,
   useRef,
-  KeyboardEvent as ReactKeyboardEvent,
   ChangeEvent,
 } from "react";
 import { RotateCcw, Eraser, Lightbulb } from "lucide-react";
@@ -63,7 +62,6 @@ function SudokuCell({
                       onClick,
                       disabled,
                     }: SudokuCellProps) {
-  // CHANGED: conditionally apply hover/pointer only if not given
   const interactiveClasses = !isGiven
       ? "cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700/50"
       : "cursor-default"; // no pointer or hover effect for given cells
@@ -71,14 +69,14 @@ function SudokuCell({
   const classes = [
     "aspect-square flex items-center justify-center text-base font-semibold select-none",
     "transition-colors duration-300 focus:outline-none focus:ring-2",
-    interactiveClasses, // CHANGED
+    interactiveClasses,
     isGiven
         ? "text-blue-800 dark:text-blue-300 font-extrabold"
         : "text-blue-700 dark:text-blue-300",
     isSelected
         ? "bg-blue-200 dark:bg-blue-800 ring-blue-500 dark:ring-blue-300 ring-2"
         : isRelated
-            ? "bg-[#eff6fe]" // CHANGED: replaced yellow highlight with #eff6fe
+            ? "bg-[#eff6fe]"
             : "bg-white dark:bg-gray-800",
     hasError
         ? "bg-red-100 dark:bg-red-800/40 border border-red-400"
@@ -93,7 +91,7 @@ function SudokuCell({
           type="button"
           className={classes}
           onClick={onClick}
-          disabled={disabled || isGiven} // CHANGED: also disable if isGiven
+          disabled={disabled || isGiven}
           aria-label={`Row ${row + 1}, Column ${col + 1}`}
           aria-selected={isSelected}
       >
@@ -103,15 +101,12 @@ function SudokuCell({
 }
 
 function canPlace(board: SudokuBoard, row: number, col: number, val: number): boolean {
-  // Check row
   for (let c = 0; c < 9; c++) {
     if (board[row][c] === val) return false;
   }
-  // Check col
   for (let r = 0; r < 9; r++) {
     if (board[r][col] === val) return false;
   }
-  // Check box
   const boxRow = Math.floor(row / 3) * 3;
   const boxCol = Math.floor(col / 3) * 3;
   for (let rr = boxRow; rr < boxRow + 3; rr++) {
@@ -174,7 +169,6 @@ function generatePuzzleAndSolution(difficulty: Difficulty): [SudokuBoard, Sudoku
   return [puzzle, puzzleCopy];
 }
 
-// CHANGED: a helpful default message object to revert to after clearing an error
 const defaultPlayingMessage: GameMessageProps = {
   type: "info",
   title: "Instruction",
@@ -202,7 +196,6 @@ export default function SudokuApp() {
   const [time, setTime] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // CHANGED: ref for hidden input (mobile keyboard)
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -224,7 +217,6 @@ export default function SudokuApp() {
   }, [gameState]);
 
   useEffect(() => {
-    // Generate new puzzle whenever difficulty changes
     const [newPuzzle, newSolution] = generatePuzzleAndSolution(difficulty);
     setBoards([newPuzzle, newSolution]);
     setOriginalBoard(newPuzzle);
@@ -239,7 +231,6 @@ export default function SudokuApp() {
     });
   }, [difficulty]);
 
-  // CHANGED: Keep the existing keydown for desktop/laptop usage
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!selectedCell || gameState !== "playing") return;
@@ -256,23 +247,18 @@ export default function SudokuApp() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedCell, board, gameState, originalBoard]);
 
-  // CHANGED: Whenever user selects a cell, focus the hidden input (mobile)
   useEffect(() => {
     if (selectedCell && inputRef.current) {
       inputRef.current.focus();
     }
   }, [selectedCell]);
 
-  // CHANGED: handle text input changes from hidden input on mobile
   function handleInputChange(e: ChangeEvent<HTMLInputElement>) {
     if (!selectedCell || gameState !== "playing") {
       e.target.value = "";
       return;
     }
     const val = e.target.value;
-    // If empty => treat as a clear
-    // If single digit (1-9) => place that number
-    // Then reset input to ""
     if (val === "") {
       clearCell();
     } else if (/^[1-9]$/.test(val)) {
@@ -351,24 +337,19 @@ export default function SudokuApp() {
         detail: "This number is not correct for this cell.",
       });
 
-      // CHANGED: keep error message for 20s, then revert to default
       setTimeout(() => {
-        // Only revert if the game is still playing
         if (gameState === "playing") {
           setMessage(defaultPlayingMessage);
         }
       }, 20000);
     } else {
-      // If previously flagged an error, remove it
       if (errors.has(key)) {
         const newErrors = new Set(errors);
         newErrors.delete(key);
         setErrors(newErrors);
       }
-      // Hide "incorrect" messages or revert to default if no other errors
       setMessage(null);
 
-      // Check if puzzle is complete and correct
       if (isBoardFull(newBoard) && isBoardFullyCorrect(newBoard)) {
         setGameState("solved");
         setMessage({
@@ -398,7 +379,6 @@ export default function SudokuApp() {
   }
 
   function getHint(): string {
-    // Search for the first empty cell in user board
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
         if (board[r][c] === null) {
@@ -435,7 +415,6 @@ export default function SudokuApp() {
               </div>
 
               {/* Sudoku Grid */}
-              {/* CHANGED: added overflow-hidden to preserve rounded corners */}
               <div
                   className="grid grid-cols-9 gap-px bg-gray-300 dark:bg-gray-700 p-px rounded-md overflow-hidden"
                   role="grid"
@@ -485,7 +464,6 @@ export default function SudokuApp() {
               )}
 
               {/* Hidden input for mobile keyboard */}
-              {/* CHANGED: focuses on cell select, handles numeric input */}
               <input
                   ref={inputRef}
                   type="tel"
@@ -537,7 +515,6 @@ export default function SudokuApp() {
 
                   {/* Hint */}
                   <div className="relative">
-                    {/* CHANGED: move tooltip above -> use bottom-full instead of top-full */}
                     <button
                         onClick={() => setShowHint((prev) => !prev)}
                         disabled={gameState !== "playing"}

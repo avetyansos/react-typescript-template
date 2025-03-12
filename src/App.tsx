@@ -78,9 +78,7 @@ function SudokuCell({
         : isRelated
             ? "bg-[#eff6fe]"
             : "bg-white dark:bg-gray-800",
-    hasError
-        ? "bg-red-100 dark:bg-red-800/40 border border-red-400"
-        : "",
+    hasError ? "bg-red-100 dark:bg-red-800/40 border border-red-400" : "",
     disabled ? "cursor-not-allowed opacity-60" : "",
   ]
       .filter(Boolean)
@@ -198,6 +196,8 @@ export default function SudokuApp() {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [showHint, setShowHint] = useState(false);
+
   useEffect(() => {
     if (gameState === "playing") {
       timerRef.current = setInterval(() => {
@@ -234,38 +234,47 @@ export default function SudokuApp() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!selectedCell || gameState !== "playing") return;
-      const [row, col] = selectedCell;
-      if (originalBoard[row][col] !== null) return;
 
-      if (e.key === "Backspace" || e.key === "Delete") {
-        clearCell();
-      } else if (/^[1-9]$/.test(e.key)) {
-        placeNumber(parseInt(e.key, 10));
+      const [row, col] = selectedCell;
+
+      switch (e.key) {
+        case "ArrowUp":
+          e.preventDefault();
+          if (row > 0) setSelectedCell([row - 1, col]);
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          if (row < 8) setSelectedCell([row + 1, col]);
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          if (col > 0) setSelectedCell([row, col - 1]);
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          if (col < 8) setSelectedCell([row, col + 1]);
+          break;
+        case "Backspace":
+        case "Delete":
+          clearCell();
+          break;
+        default:
+          if (/^[1-9]$/.test(e.key)) {
+            placeNumber(parseInt(e.key, 10));
+          }
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedCell, board, gameState, originalBoard]);
 
   useEffect(() => {
     if (selectedCell && inputRef.current) {
-      inputRef.current.focus();
+      // Focus without scrolling
+      inputRef.current.focus({ preventScroll: true });
     }
   }, [selectedCell]);
-
-  function handleInputChange(e: ChangeEvent<HTMLInputElement>) {
-    if (!selectedCell || gameState !== "playing") {
-      e.target.value = "";
-      return;
-    }
-    const val = e.target.value;
-    if (val === "") {
-      clearCell();
-    } else if (/^[1-9]$/.test(val)) {
-      placeNumber(parseInt(val, 10));
-    }
-    e.target.value = "";
-  }
 
   function formatTime(sec: number) {
     const mm = Math.floor(sec / 60);
@@ -289,7 +298,7 @@ export default function SudokuApp() {
   }
 
   function handleCellClick(r: number, c: number) {
-    // Only allow selection if the cell isn't given and the game is still playing
+    // Only allow selection if the cell is NOT a given clue and the game is still playing
     if (originalBoard[r][c] === null && gameState === "playing") {
       setSelectedCell([r, c]);
     }
@@ -390,8 +399,19 @@ export default function SudokuApp() {
     return "No hints available! (Board is complete or no empty cells).";
   }
 
-  const [showHint, setShowHint] = useState(false);
-
+  function handleInputChange(e: ChangeEvent<HTMLInputElement>) {
+    if (!selectedCell || gameState !== "playing") {
+      e.target.value = "";
+      return;
+    }
+    const val = e.target.value;
+    if (val === "") {
+      clearCell();
+    } else if (/^[1-9]$/.test(val)) {
+      placeNumber(parseInt(val, 10));
+    }
+    e.target.value = "";
+  }
   return (
       <div className={darkMode ? "dark" : ""}>
         <main className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
@@ -468,9 +488,13 @@ export default function SudokuApp() {
                   ref={inputRef}
                   type="tel"
                   onChange={handleInputChange}
-                  className="absolute opacity-0 pointer-events-none"
+                  style={{
+                    position: "fixed",
+                    top: "-9999px",
+                    left: "0",
+                    opacity: 0,
+                  }}
                   aria-hidden="true"
-                  // The input is "hidden" but we rely on it for opening mobile keyboard
               />
 
               {/* Bottom Controls */}

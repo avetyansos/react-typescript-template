@@ -1,5 +1,5 @@
 I understood the Exact request,
-I will generate the code for adding Expenses Tracker App
+I will generate the code making Sodoku Game
 
 # Explanation:
 Created the Expenses Tracker App with TypeScript and React.

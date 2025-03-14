@@ -2,9 +2,10 @@ I understood the Exact request,
 I will generate the code making Sudoku Game
 
 # Explanation:
-Created the Sudoku Game  with TypeScript and React.
 
-````
+Created the Sudoku Game with TypeScript and React.
+
+```tsx
 "use client";
 
 import React, {
@@ -584,10 +585,16 @@ export default function SudokuApp() {
       </div>
   );
 }
-````
+```
+
 ### Installation of dependencies
-In the root directory run Yarn to install all dependencies,
+
+In the root directory run `yarn` to install all dependencies,
+
 ### Run the Project
+
 `yarn dev`
 
-This is a simple Sudoku app created In ReactJs and Typescript, Game Displayed in User Friendly and Responsive format which makes it to be played in each kind of devices 
+This is a simple Sudoku app created In ReactJs and Typescript, Game Displayed in User Friendly and Responsive format which makes it to be played in each kind of devices
+
+Let me know if you want to add more features, such as new buttons, or some functional that could bring game more effective.
